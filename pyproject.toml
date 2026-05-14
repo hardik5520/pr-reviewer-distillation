@@ -1,0 +1,22 @@
+[project]
+name = "pr-reviewer-distillation"
+version = "0.1.0"
+description = "Distilling a GPT-4o based PR review agent into a fine-tuned 7B model"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx",
+    "tenacity",
+    "tqdm",
+    "python-dotenv",
+    "pydantic",
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "pytest", "ipykernel"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/distill"]

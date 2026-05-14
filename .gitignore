@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+*.egg-info/
+dist/
+build/
+
+# Data (large, regeneratable, may contain PII from PR authors)
+data/raw/*
+data/traces/*
+data/splits/*
+!data/**/.gitkeep
+
+# Model weights (huge)
+checkpoints/
+*.safetensors
+*.bin
+*.gguf
+
+# Notebooks output
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
