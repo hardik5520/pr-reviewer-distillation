@@ -26,7 +26,7 @@ def _headers() -> dict[str, str]:
 def get_pr(owner: str, repo: str, number: int) -> dict[str, Any]:
     """Fetch a single PR by number. Returns the full PR JSON."""
     url = f"{GITHUB_API}/repos/{owner}/{repo}/pulls/{number}"
-    response = httpx.get(url, headers=_headers(), timeout=30.0)
+    response = httpx.get(url, headers=_headers(), timeout=30.0, follow_redirects=True)
     response.raise_for_status()
     return response.json()
 
@@ -57,7 +57,7 @@ def list_prs(
             "direction": "desc",
         }
         response = httpx.get(
-            url, headers=_headers(), params=params, timeout=30.0
+            url, headers=_headers(), params=params, timeout=30.0, follow_redirects=True
         )
         response.raise_for_status()
         batch = response.json()
@@ -82,6 +82,6 @@ def get_pr_diff(owner: str, repo: str, number: int) -> str:
     url = f"{GITHUB_API}/repos/{owner}/{repo}/pulls/{number}"
     headers = _headers()
     headers["Accept"] = "application/vnd.github.v3.diff"
-    response = httpx.get(url, headers=headers, timeout=30.0)
+    response = httpx.get(url, headers=headers, timeout=30.0, follow_redirects=True)
     response.raise_for_status()
     return response.text

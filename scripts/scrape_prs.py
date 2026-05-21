@@ -1,60 +1,102 @@
-"""Scrape merged PRs from a repo into data/raw/{owner}__{repo}.jsonl
+"""Scrape merged + filtered PRs from multiple repos into data/raw/.
 
 Run: uv run python scripts/scrape_prs.py
 """
 import json
+from collections import Counter
 from pathlib import Path
 
 from tqdm import tqdm
 
+from distill.filters import should_keep_full, should_keep_summary
 from distill.github_client import get_pr, get_pr_diff, list_prs
 
-OWNER = "fastapi"
-REPO = "fastapi"
-TARGET = 20       # how many merged PRs we want to keep
-SCAN_LIMIT = 100  # how many closed PRs to scan to find them
+# Repos to scrape. Edit this list freely.
+REPOS = [
+    ("fastapi", "fastapi"),
+    ("pydantic", "pydantic"),
+    ("pallets", "flask"),
+    ("encode", "httpx"),
+    ("fastapi", "sqlmodel"),
+]
+
+TARGET_PER_REPO = 20
+SCAN_LIMIT = 500
 
 out_dir = Path("data/raw")
 out_dir.mkdir(parents=True, exist_ok=True)
-out_file = out_dir / f"{OWNER}__{REPO}.jsonl"
 
-print(f"Target: {TARGET} merged PRs from {OWNER}/{REPO}")
-print(f"Output: {out_file}\n")
+overall_kept = 0
+overall_scanned = 0
+overall_reasons: Counter = Counter()
 
-kept = 0
-progress = tqdm(total=TARGET, desc="Saved")
+for owner, repo in REPOS:
+    out_file = out_dir / f"{owner}__{repo}.jsonl"
 
-with open(out_file, "w") as f:
-    for pr_summary in list_prs(OWNER, REPO, state="closed", limit=SCAN_LIMIT):
-        # filter 1: only merged PRs (closed != merged on GitHub)
-        if not pr_summary.get("merged_at"):
-            continue
+    # skip if already scraped, makes the script idempotent
+    if out_file.exists():
+        existing = sum(1 for _ in open(out_file))
+        print(f"\n[skip] {owner}/{repo} already scraped ({existing} records)")
+        overall_kept += existing
+        continue
 
-        number = pr_summary["number"]
+    print(f"\n[{owner}/{repo}] target {TARGET_PER_REPO}, scanning up to {SCAN_LIMIT}")
 
-        # fetch full details and the raw diff
-        pr = get_pr(OWNER, REPO, number)
-        diff = get_pr_diff(OWNER, REPO, number)
+    kept = 0
+    scanned = 0
+    reasons: Counter = Counter()
+    progress = tqdm(total=TARGET_PER_REPO, desc=f"  {repo}", leave=False)
 
-        record = {
-            "owner": OWNER,
-            "repo": REPO,
-            "number": number,
-            "title": pr["title"],
-            "author": pr["user"]["login"],
-            "merged_at": pr["merged_at"],
-            "additions": pr["additions"],
-            "deletions": pr["deletions"],
-            "changed_files": pr["changed_files"],
-            "body": pr.get("body") or "",
-            "diff": diff,
-        }
-        f.write(json.dumps(record) + "\n")
-        kept += 1
-        progress.update(1)
+    with open(out_file, "w") as f:
+        for pr_summary in list_prs(owner, repo, state="closed", limit=SCAN_LIMIT):
+            scanned += 1
 
-        if kept >= TARGET:
-            break
+            ok, reason = should_keep_summary(pr_summary)
+            if not ok:
+                reasons[reason] += 1
+                continue
 
-progress.close()
-print(f"\nDone. Saved {kept} merged PRs to {out_file}")
+            number = pr_summary["number"]
+            pr = get_pr(owner, repo, number)
+            diff = get_pr_diff(owner, repo, number)
+
+            ok, reason = should_keep_full(pr, diff)
+            if not ok:
+                reasons[reason] += 1
+                continue
+
+            record = {
+                "owner": owner,
+                "repo": repo,
+                "number": number,
+                "title": pr["title"],
+                "author": pr["user"]["login"],
+                "merged_at": pr["merged_at"],
+                "additions": pr["additions"],
+                "deletions": pr["deletions"],
+                "changed_files": pr["changed_files"],
+                "body": pr.get("body") or "",
+                "diff": diff,
+            }
+            f.write(json.dumps(record) + "\n")
+            kept += 1
+            reasons["ok"] += 1
+            progress.update(1)
+
+            if kept >= TARGET_PER_REPO:
+                break
+
+    progress.close()
+    print(f"  Saved {kept}/{TARGET_PER_REPO}, scanned {scanned}")
+    overall_kept += kept
+    overall_scanned += scanned
+    for reason, count in reasons.items():
+        overall_reasons[reason] += count
+
+print(f"\n=== Summary ===")
+print(f"Repos:    {len(REPOS)}")
+print(f"Kept:     {overall_kept}")
+print(f"Scanned:  {overall_scanned}")
+print(f"\nAggregate filter breakdown:")
+for reason, count in overall_reasons.most_common():
+    print(f"  {count:4d}  {reason}")

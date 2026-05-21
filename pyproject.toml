@@ -9,6 +9,7 @@ dependencies = [
     "tqdm",
     "python-dotenv",
     "pydantic",
+    "openai>=2.37.0",
 ]
 
 [project.optional-dependencies]
