@@ -10,6 +10,8 @@ dependencies = [
     "python-dotenv",
     "pydantic",
     "openai>=2.37.0",
+    "modal>=1.4.3",
+    "anthropic>=0.104.1",
 ]
 
 [project.optional-dependencies]

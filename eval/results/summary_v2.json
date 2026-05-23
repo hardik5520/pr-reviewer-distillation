@@ -1,0 +1,30 @@
+{
+  "gpt-4o": {
+    "issue_coverage": 2.62,
+    "false_positives": 3.46,
+    "severity_calibration": 2.38,
+    "actionability": 3.46,
+    "overall": 2.62
+  },
+  "gpt-4o-mini": {
+    "issue_coverage": 2.77,
+    "false_positives": 3.38,
+    "severity_calibration": 2.62,
+    "actionability": 3.38,
+    "overall": 2.77
+  },
+  "pr-reviewer-7b": {
+    "issue_coverage": 2.08,
+    "false_positives": 4.46,
+    "severity_calibration": 2.0,
+    "actionability": 1.62,
+    "overall": 2.0
+  },
+  "pr-reviewer-7b-instruct": {
+    "issue_coverage": 2.31,
+    "false_positives": 2.77,
+    "severity_calibration": 2.08,
+    "actionability": 3.0,
+    "overall": 2.38
+  }
+}
